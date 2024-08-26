@@ -605,17 +605,28 @@ void handle_led_notify_from_app(const uint8_t *buffer)
 
 		ESP_LOGI(GATTS_TABLE_TAG, "LED: Pattern Count=%d priority: %d", number_of_patterns, priority);
 		//1 pattern = 3 bytes
+        uint8_t button_pressing = 0;
+        uint32_t duration_total = 0;
 		for (int i = 0; i < number_of_patterns; i++) {
 			int p = 4+3*i;
 			const uint8_t *pat = &buffer[p];
 			uint8_t duration = pat[0];
+            duration_total += duration*50;
 			uint8_t red = pat[1] & 0xf;
 			uint8_t green = (pat[1]>>4) & 0xf;
 			uint8_t blue = pat[2] & 0xf;
-			ESP_LOGI(GATTS_TABLE_TAG, "*(%d) #%02x%02x%02x", duration, red, green, blue);
+            uint8_t vibration = (pat[2]>>4) & 0x7;
+            if(vibration)
+                button_pressing = 1;
+			ESP_LOGI(GATTS_TABLE_TAG, "*(%dms-%d) #%02x%02x%02x", duration*50, vibration, red, green, blue);
 		}
-		ESP_LOGI(GATTS_TABLE_TAG, "Sending push button");
-		xQueueSend(button_queue, &number_of_patterns, portMAX_DELAY);
+        ESP_LOGI(GATTS_TABLE_TAG, "#button_pressing:%d duration:%ld", button_pressing, duration_total);
+        if(button_pressing){
+            ESP_LOGI(GATTS_TABLE_TAG, "Delay for %ld ms", duration_total/2);
+            vTaskDelay(duration_total/2*portTICK_RATE_MS);
+            ESP_LOGI(GATTS_TABLE_TAG, "Sending push button");
+            xQueueSend(button_queue, &number_of_patterns, portMAX_DELAY);
+        }
 
 }
 
@@ -896,8 +907,10 @@ static void auto_button_task(void *pvParameters)
 		if (xQueueReceive(button_queue, &element, portMAX_DELAY)) {
 			    ESP_LOGI("BUTTON", "[auto push button]");
 			    uint8_t notify_data[2];
-                            notify_data[0] = 0x03;
-                            notify_data[1] = 0xff;
+                            // notify_data[0] = 0x03;
+                            // notify_data[1] = 0xff;
+                            notify_data[0] = 0x00;
+                            notify_data[1] = 0x78;
 
 			    esp_ble_gatts_send_indicate(last_if,
 							last_conn_id,
