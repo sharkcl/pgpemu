@@ -3,7 +3,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/queue.h"
 #include "driver/uart.h"
-#include "esp32/aes.h"
+#include "aes/esp_aes.h"
 
 #define EX_UART_NUM UART_NUM_0
 
@@ -20,6 +20,7 @@
 #include "pgp-cert.h"
 #include "secrets.h"
 #include "esp_gatt_common_api.h"
+#include "esp_mac.h"
 
 #define GATTS_TABLE_TAG "PGPEMU"
 
